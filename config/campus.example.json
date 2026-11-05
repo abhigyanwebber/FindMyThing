@@ -1,0 +1,26 @@
+{
+  "campus_display_name": "Example Campus — replace before deployment",
+  "timezone": "Asia/Kolkata",
+  "categories": [
+    {"slug": "electronics", "name": "Electronics"},
+    {"slug": "bags", "name": "Bags"},
+    {"slug": "clothing", "name": "Clothing"},
+    {"slug": "id-cards", "name": "ID Cards"},
+    {"slug": "books-stationery", "name": "Books & Stationery"},
+    {"slug": "accessories", "name": "Accessories"},
+    {"slug": "other", "name": "Other"}
+  ],
+  "zones": [
+    {"slug": "academic-zone", "name": "Academic Zone"},
+    {"slug": "residential-zone", "name": "Residential Zone"},
+    {"slug": "common-zone", "name": "Common Zone"}
+  ],
+  "locations": [
+    {"slug": "academic-block-a", "name": "Academic Block A", "zone_slug": "academic-zone"},
+    {"slug": "library", "name": "Library", "zone_slug": "academic-zone"},
+    {"slug": "laboratories", "name": "Laboratories", "zone_slug": "academic-zone"},
+    {"slug": "hostel", "name": "Hostel", "zone_slug": "residential-zone"},
+    {"slug": "cafeteria", "name": "Cafeteria", "zone_slug": "common-zone"},
+    {"slug": "sports-ground", "name": "Sports Ground", "zone_slug": "common-zone"}
+  ]
+}
