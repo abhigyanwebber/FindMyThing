@@ -1,0 +1,37 @@
+[project]
+name = "findmything-backend"
+version = "1.0.0"
+description = "FindMyThing - secure campus lost & found API"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = [
+    "E712",   # T-SQL needs `== True`; `.is_(True)` compiles to invalid `IS 1`
+    "B008",   # FastAPI Depends()/Query() defaults
+    "S101",   # assert is fine in tests
+    "S105", "S106",  # test credentials
+    "S608",   # SQL text built only from fixed identifiers (reviewed per use)
+    "UP042", "UP046", "UP047", "UP017",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B", "E501"]
+"scripts/*" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+plugins = []
+exclude = ["migrations/", "tests/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["sql: integration tests requiring a real SQL Server (TEST_ADMIN_DATABASE_URL)"]

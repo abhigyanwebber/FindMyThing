@@ -1,6 +1,6 @@
 # Implementation Status
 
-**Current phase:** Specification closure and final repository validation complete; implementation not started.
+**Current phase:** Local implementation in progress (owner authorized implementation; Azure provisioning not authorized yet).
 
 ## Frozen documentation
 
@@ -23,15 +23,32 @@
 - [x] Seed data, reason/event enums, retention, deployment and maintenance contracts
 - [x] Final whole-repository contradiction/readiness validation
 
-## Not started
+## Implementation progress (local; verified against a real SQL Server 2022 container)
 
-- [ ] Application implementation
-- [ ] Database migrations/schema
-- [ ] Frontend/backend integration
-- [ ] Tests
-- [ ] Azure portal verification/provisioning/deployment
+Done and tested:
+- [x] Backend scaffold (FastAPI, SQLAlchemy 2, pyodbc/ODBC Driver 18, Alembic) in `backend/`
+- [x] Alembic migration `0001_initial`: all tables, constraints, filtered unique indexes, report status-history trigger, analytics views
+- [x] Idempotent reference-data seed (deterministic UUIDv5)
+- [x] Auth: register/login/logout/me/csrf, Argon2id, hashed opaque sessions, 12h absolute expiry, CSRF + exact Origin, SQL-backed rate limits
+- [x] Error envelope, request IDs, CORS, security headers, audit logging with metadata allowlist
+- [x] Reports: create/list/search/detail/edit/withdraw, moderator close/reopen/correct, visibility rules, version conflicts, matching outbox enqueue + invalidation
+- [x] Pure `match-v1` scoring domain
+- [x] Tests: 72 passing (domain, SQL schema/trigger/invariants, auth API, reports API)
+
+Not done yet:
+- [ ] Matching worker + matches API (list/recalculate/dismiss)
+- [ ] Claims, verification, recovery, recovery void, claim evidence
+- [ ] Photo upload/retrieval, image re-encoding, Blob adapter, retention cleanup
+- [ ] Moderator analytics summary + activity feed
+- [ ] CLI (`create-moderator`, `seed-reference-data`, `cleanup-retention`, `matching-jobs`)
+- [ ] React + TypeScript + Vite frontend, Vitest and Playwright tests
+- [ ] Azure deployment scaffolding (Bicep, App Service / Static Web Apps config, CI workflows)
+- [ ] Operational documentation, local-setup guide, Azure provisioning handoff
+- [ ] Azure resource provisioning and integration (separate phase, not authorized)
 - [ ] Power BI report
+
+See `IMPLEMENTATION_NOTES.md` for spec discrepancies and assumptions found so far.
 
 ## Rule
 
-The product/architecture decisions and detailed implementation contracts are frozen and validated. Do not implement, commit, push, provision Azure resources, or deploy without a separate explicit owner instruction. Azure service quotas, region, plans, costs, and domain availability must be checked before deployment; this is a deployment verification task, not permission to redesign the project.
+Implementation is authorized. Do not commit, push, provision Azure resources, or deploy without a separate explicit owner instruction. Azure service quotas, region, plans, costs, and domain availability must be checked before deployment; this is a deployment verification task, not permission to redesign the project.
