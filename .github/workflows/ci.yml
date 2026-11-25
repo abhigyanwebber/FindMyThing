@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # Throwaway password for an ephemeral CI container only; not a real credential.
+          MSSQL_SA_PASSWORD: "Ci_Only_Passw0rd!x9"
+        ports:
+          - 14333:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Ci_Only_Passw0rd!x9' -Q 'SELECT 1'"
+          --health-interval 10s --health-timeout 5s --health-retries 20 --health-start-period 30s
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_ADMIN_DATABASE_URL: "Driver={ODBC Driver 18 for SQL Server};Server=localhost,14333;Database=master;UID=sa;PWD=Ci_Only_Passw0rd!x9;Encrypt=yes;TrustServerCertificate=yes"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install ODBC Driver 18
+        run: |
+          if ! odbcinst -q -d | grep -q "ODBC Driver 18"; then
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+            sudo apt-get update
+            sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+          fi
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check app tests
+      - run: mypy app
+      - run: pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api.example.edu/api
+
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and lint Bicep (no deployment)
+        run: |
+          az bicep install
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/main.bicepparam --stdout > /dev/null
+          az bicep lint --file infra/main.bicep
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t findmything-api:ci .
+      - name: Smoke test backend image
+        run: |
+          docker run -d --name api -p 8000:8000 -e MATCHING_WORKER_ENABLED=false findmything-api:ci
+          for i in $(seq 1 20); do curl -fsS http://localhost:8000/api/health && exit 0; sleep 2; done
+          docker logs api
+          exit 1
+      - name: Build frontend image
+        run: docker build --build-arg VITE_API_BASE_URL=https://api.example.edu/api -t findmything-web:ci frontend

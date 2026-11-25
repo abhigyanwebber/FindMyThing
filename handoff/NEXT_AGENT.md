@@ -60,7 +60,19 @@ Do NOT invent features or alter frozen architectural decisions. Read the documen
 
 ## 5. EXACT NEXT TASK FOR INCOMING AGENT
 
-### UPDATE 2026-11-25 (READ THIS FIRST; overrides previous task notes)
+### UPDATE 2026-11-26 (latest; READ THIS FIRST)
+ODBC risk RESOLVED (STATUS.md 1H): the API deploys to App Service as a custom container from a PUBLIC GHCR image built from `backend/Dockerfile` by `.github/workflows/publish-image.yml` (GITHUB_TOKEN only, no secrets, no Azure access). Bicep takes a `containerImage` parameter (placeholder in `main.bicepparam`). Locally verified: ODBC Driver 18 in image, non-root `appuser`, production-mode start with `/home/site/campus/campus.json`, `/api/health` 200 without a database. NOT verified against Azure/GitHub: the publish workflow run, anonymous GHCR pull, managed-identity SQL/Blob, `/home` mount permissions. Owner steps before deploy: push, run the publish workflow, make the GHCR package public, pin the `sha-` tag, real origins and Entra admin object ID, portal quota checks, then post-deploy SQL identity user + Alembic migration + `campus.json` upload + SWA deploy + custom domains. Do NOT deploy or commit without explicit owner approval. Phase 5 still not started. (The "ODBC startup script vs container" decision in the entry below is closed.)
+
+### UPDATE 2026-11-26 (later; infra review done; READ THIS FIRST)
+Infra review finished (STATUS.md 1G): one fix (`main.bicepparam` pins `location = 'eastasia'` because the Azure for Students region policy only allows eastasia, koreacentral, malaysiawest, austriaeast, uaenorth), read-only `what-if` exit 0, nothing deployed. BEFORE any real deploy the owner must decide: (1) how App Service gets ODBC Driver 18 (startup script vs custom container from `backend/Dockerfile`); (2) real Entra admin object ID and custom-domain origins; (3) post-deploy steps (SQL identity user, migrations, campus.json). Do not deploy without explicit owner approval. Phase 5 still not started.
+
+### UPDATE 2026-11-26 (READ THIS FIRST; overrides everything below)
+Phase 4 (Azure Infrastructure & CI scaffolding) is **COMPLETE and VERIFIED locally** (details and exit codes: STATUS.md section 1F). Bicep build/build-params/lint exit 0; backend ruff/mypy/pytest (353 passed) exit 0; frontend lint/typecheck/test/build exit 0; both Docker images build and pass smoke tests. Nothing was deployed, provisioned, committed or pushed.
+
+**NEXT TASK: Phase 5 - Power BI Analytics Integration & Handover** (`handoff/IMPLEMENTATION_PLAN.md`, Task 5.1+). Do not start it without the owner's go-ahead on scope. Owner decisions still pending: (1) whether to commit the large uncommitted tree; (2) whether to add `docker-compose.yml` (listed in the plan, not built); (3) a real Azure `what-if`/deploy needs an owner-provided subscription; (4) the CI workflow has never run on GitHub.
+Environment gotchas: shell exports `NODE_ENV=production` (use `$env:NODE_ENV='development'` and `npm ci --include=dev` locally); never write config files with PowerShell `Out-File`/`Set-Content -Encoding UTF8` on Windows PowerShell 5.1 (adds a BOM); Docker BuildKit can fail transiently, so retry once; never `docker rm` `findmything-sql`.
+
+### (Superseded) UPDATE 2026-11-25 (READ THIS FIRST; overrides previous task notes)
 Phase 3 (Frontend Implementation) is **COMPLETE and VERIFIED**:
 - All student workflows: registration, sign in, report creation with photo, report search/filter, report editing (`PATCH /reports/{id}`), withdrawal, matches and recalculation trigger, claim submission (with optional link to own lost report), evidence photo management (upload/delete), claim cancellation.
 - All moderator workflows: claims review queue (`/moderator`), claim verification, info request, rejection with mandatory reason codes, in-person recovery handover completion, recovery voiding, evidence removal, report moderation (close with reasons, reopen, field corrections with decision notes), analytics summary dashboard, and activity log audit feed.

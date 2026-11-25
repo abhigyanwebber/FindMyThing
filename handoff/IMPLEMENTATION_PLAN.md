@@ -99,7 +99,7 @@
 
 ## Phase 4: Azure Infrastructure & CI/CD Scaffolding
 
-- [ ] **Task 4.1: Bicep Infrastructure as Code Templates**
+- [x] **Task 4.1: Bicep Infrastructure as Code Templates** (COMPLETE 2026-11-26; `az bicep build`, `build-params`, `lint` all exit 0; also contains Static Web Apps in `main.bicep`, blob role assignment in `modules/blob-role.bicep`, `main.bicepparam`. Never deployed.)
   - **Priority:** Medium
   - **Dependencies:** None
   - **Files:**
@@ -111,7 +111,7 @@
   - **Acceptance Criteria:** `az bicep build --file infra/main.bicep` compiles without errors. (NO cloud provisioning).
   - **Verification:** Bicep build / linter command.
 
-- [ ] **Task 4.2: Containerization & GitHub Actions CI/CD**
+- [x] **Task 4.2: Containerization & GitHub Actions CI/CD** (COMPLETE 2026-11-26: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `.dockerignore`, `frontend/.dockerignore`, `.github/workflows/ci.yml`; both images built and smoke-tested locally. API hosting resolved 2026-11-26: App Service custom container from a PUBLIC GHCR image published by `.github/workflows/publish-image.yml` (see STATUS.md 1H; not verified against Azure). `docker-compose.yml` was NOT created: it was not in the Phase 4 required deliverables for this session; add only if the owner asks.)
   - **Priority:** Medium
   - **Dependencies:** Task 1.1, Task 3.1
   - **Files:**

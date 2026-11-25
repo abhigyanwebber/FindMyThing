@@ -1,0 +1,54 @@
+name: Publish API image
+
+# Builds backend/Dockerfile and pushes it to GitHub Container Registry (ghcr.io).
+# Uses ONLY the built-in GITHUB_TOKEN: no repository secrets, no Azure credentials, no deployment.
+#
+# One-time GitHub setup (cannot be done from a workflow):
+#   1. Repo Settings > Actions > General > Workflow permissions: allow workflows to create packages (default token needs packages: write, granted below).
+#   2. After the FIRST successful run, open the package (Profile > Packages > findmything-api > Package settings)
+#      and change visibility to PUBLIC. New packages default to private; App Service is configured with no
+#      registry credentials, so a private package will fail to pull.
+# The image label org.opencontainers.image.source links the package to this repository.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "config/campus.example.json"
+      - ".github/workflows/publish-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute lowercase image name
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/findmything-api" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Build
+        run: docker build -f backend/Dockerfile -t "${{ steps.img.outputs.name }}:sha-${GITHUB_SHA::12}" -t "${{ steps.img.outputs.name }}:main" .
+      - name: Smoke test before push (no database needed)
+        run: |
+          docker run -d --name api -p 8000:8000 -e MATCHING_WORKER_ENABLED=false "${{ steps.img.outputs.name }}:main"
+          for i in $(seq 1 20); do curl -fsS http://localhost:8000/api/health && break; sleep 2; done
+          curl -fsS http://localhost:8000/api/health || { docker logs api; exit 1; }
+          docker run --rm --entrypoint odbcinst "${{ steps.img.outputs.name }}:main" -q -d | grep -q "ODBC Driver 18 for SQL Server"
+          test "$(docker exec api id -u)" != "0"
+      - name: Push
+        run: |
+          docker push "${{ steps.img.outputs.name }}:sha-${GITHUB_SHA::12}"
+          docker push "${{ steps.img.outputs.name }}:main"

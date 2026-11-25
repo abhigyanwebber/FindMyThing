@@ -40,3 +40,29 @@ Thumbs.db
 
 # Local campus deployment configuration (template is tracked)
 config/campus.json
+
+# Python caches / tooling
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+
+# Frontend build / test output
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# Logs and agent run output
+*.log
+npm-debug.log*
+
+# Local blob store and Bicep build output
+.localblob/
+infra/*.json
+!infra/*.parameters.example.json
+
+# Terraform/Azure local state
+*.tfstate
+*.publishsettings

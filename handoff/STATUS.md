@@ -3,7 +3,7 @@
 **Snapshot Timestamp:** 2026-11-25  
 **Repository Path:** `C:\Users\ASUS\Desktop\FindMyThing`  
 **Git Branch:** `main` (commit `d62c658 "implementation milestone"`)  
-**Current Phase:** Phase 1 (Backend static quality & tests) COMPLETE. Phase 2 (Backend contract surface & CLI) COMPLETE. Phase 3 (Frontend React + TypeScript + Vite SPA, Student & Moderator Workflows) COMPLETE and VERIFIED. Phase 4 (Azure Infrastructure & CI) pending.
+**Current Phase:** Phase 1 (Backend static quality & tests) COMPLETE. Phase 2 (Backend contract surface & CLI) COMPLETE. Phase 3 (Frontend React + TypeScript + Vite SPA, Student & Moderator Workflows) COMPLETE and VERIFIED. Phase 4 (Azure Infrastructure & CI) COMPLETE and verified locally 2026-11-26 (see 1F; not deployed).
 
 ---
 
@@ -15,6 +15,79 @@ FindMyThing is a campus-focused, security-first Lost & Found and Item Recovery p
 - Multi-party claim verification and supervised recovery workflows.
 - SQL Server 2022 backend with FastAPI, SQLAlchemy 2, and Alembic migrations.
 - Modern React + TypeScript + Vite accessible frontend SPA with CSS Modules, strict role routing, and full API integration.
+
+## 1H. Session 2026-11-26 (latest) - ODBC deployment decision RESOLVED: App Service custom container from a public GHCR image (NOTHING deployed)
+
+**Decision:** run the API on Linux App Service as a **custom container** built from the existing `backend/Dockerfile` and pulled from a **public GitHub Container Registry image**. Rejected: built-in Python runtime plus a startup script that apt-installs `msodbcsql18` (re-runs on every restart, adds minutes to cold start, depends on Microsoft's apt repo being reachable at boot, and is not testable locally). The image already installs the driver, builds, runs non-root and was smoke-tested, so it is the reproducible path. GHCR avoids an Azure Container Registry (extra cost); Microsoft docs state that for a public registry no credentials are needed and only the image name is set, so no `DOCKER_REGISTRY_SERVER_*` settings and no secrets exist. Docs also say custom containers only mount `/home` when `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`, and need `WEBSITES_PORT` for a non-80 port.
+
+Files changed: `infra/modules/appservice.bicep` (new required `containerImage` param; `linuxFxVersion: DOCKER|<image>`; removed `appCommandLine`, `pythonVersion`, `SCM_DO_BUILD_DURING_DEPLOYMENT`; added `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`; kept `WEBSITES_PORT=8000`, managed identity, health check `/api/health`, absolute `CAMPUS_CONFIG_PATH`), `infra/main.bicep` (passes `containerImage`), `infra/main.bicepparam` (placeholder `ghcr.io/abhigyanwebber/findmything-api:main`), `backend/Dockerfile` (added `org.opencontainers.image.source` label only), NEW `.github/workflows/publish-image.yml` (push to main touching backend, or manual; builds, smoke-tests ODBC/health/non-root, pushes `:sha-<12>` and `:main`; uses only the built-in `GITHUB_TOKEN`, `packages: write`, no secrets, no Azure access, no deploy). `ci.yml` unchanged (still no deploy).
+
+Required GitHub configuration (cannot be done by a workflow): after the FIRST successful publish run, set the package `findmything-api` visibility to **Public** (new packages default to private and App Service has no pull credentials). Image names must be lowercase. Pin the sha tag in the deployment parameter, not `:main`.
+
+Validation executed this session (exit codes): `az bicep build` 0; `build-params` 0; `lint` 0. `az deployment group what-if -g rscgrp-01` (read-only, authenticated student session) exit 0, same Create list as before plus role assignment `Unsupported` (output not evaluable pre-deploy); it does not pull or run the image. Backend: `ruff` 0, `mypy` 0 (41 files), `pytest` 0 (353 passed, 193 s). Frontend: `npm ci --include=dev` 0, lint 0, typecheck 0, test 0, build 0. Docker: backend image build 0 (with the new label), frontend image build 0. Image checks: `odbcinst -q -d` exit 0 shows `[ODBC Driver 18 for SQL Server]`; `pyodbc.drivers()` lists it. Production-mode container (`APP_ENV=production`, https origins, `ActiveDirectoryMsi` DATABASE_URL pointing to a non-existent server, campus.json mounted read-only at `/home/site/campus/campus.json`, `CAMPUS_CONFIG_PATH` set to that absolute path): started cleanly, `GET /api/health` 200 `{"status":"ok"}` with no database reachable, Docker health `healthy`, process `uid=10001(appuser)`, config file readable by that user. Frontend container: `/` 200 and `/some/spa/route` 200.
+
+NOT verified (cannot be without Azure/GitHub): the CI publish workflow has never run; GHCR anonymous pull by App Service is configured per Microsoft docs but untested; managed-identity token acquisition to SQL/Blob from inside the container; read access of `appuser` to the real Azure Files `/home` mount (tested only with a local bind mount); that the `/home` mount survives restarts. The deployment path is therefore configured and locally tested, NOT verified against Azure.
+
+Remaining prerequisites before deploy: push the repo and run `publish-image.yml`, make the package public, copy the `sha-` tag into `containerImage`; real `frontendOrigin`/`apiPublicOrigin`/Entra admin object ID; portal checks for B1 quota and SQL serverless in an allowed region (default eastasia); post-deploy: create SQL user for the site identity (`CREATE USER [<apiSiteName>] FROM EXTERNAL PROVIDER` + minimum roles), run Alembic migrations once (image contains `alembic.ini`/`migrations`; run from a machine/Cloud Shell with an Entra login or `az webapp ssh`), upload `campus.json` to `/home/site/campus/`, deploy SWA `dist/` built with the real `VITE_API_BASE_URL`, configure custom domains, create the first moderator via `python -m app.cli`. Deploy command (NOT EXECUTED): `az deployment group create --resource-group <rg> --template-file infra/main.bicep --parameters infra/main.bicepparam --parameters containerImage=ghcr.io/<owner>/findmything-api:sha-<12chars>`. Run the same with `what-if` first.
+
+No Azure resources created or modified; no git commit or push.
+
+---
+
+## 1G. Session 2026-11-26 (later) - Phase 4 Infrastructure Review & Deployment Readiness (NOTHING deployed)
+
+NOTE: the "ODBC Driver 18 on App Service" open risk below is now RESOLVED by section 1H (custom container). The `SCM_DO_BUILD_DURING_DEPLOYMENT` finding no longer applies.
+
+Reviewed in full: `infra/main.bicep`, `main.bicepparam`, `modules/{sql,storage,blob-role,appservice}.bicep`, `frontend/public/staticwebapp.config.json`, `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `.github/workflows/ci.yml`, `.gitignore`, `.dockerignore`, backend `config.py` env aliases and `blobstore.py` auth.
+
+Fix made (one): `infra/main.bicepparam` now pins `param location = 'eastasia'`. Reason: the subscription (Azure for Students) has policy "Allowed resource deployment regions" = eastasia, koreacentral, malaysiawest, austriaeast, uaenorth. The existing RG `rscgrp-01` is in centralindia, and the template defaulted to the RG region, so `what-if` failed with `RequestDisallowedByAzure` for the storage account, SQL server and database. No test applies (IaC only).
+
+Verified correct (by reading the templates): SQL is Entra-only (`azureADOnlyAuthentication: true`, no SQL login/password anywhere), TLS 1.2, serverless `GP_S_Gen5` 1 vCore, min 0.5, auto-pause 60 min. Storage: no public blob access, no shared-key auth, container `publicAccess: None`, TLS 1.2, soft delete 7 d. Role: Storage Blob Data Contributor scoped to the one container, `principalType: ServicePrincipal`, principal from the App Service output. App Service: system-assigned identity, `httpsOnly`, FTPS/basic FTP disabled, Always On, `healthCheckPath /api/health` (route exists; does not touch the DB so it does not wake auto-pause), `WEBSITES_PORT 8000` matches the uvicorn command, `CAMPUS_CONFIG_PATH` absolute, `DATABASE_URL` uses `ActiveDirectoryMsi;Encrypt=yes;TrustServerCertificate=no` (no secret). All app setting names match `Settings` aliases. Outputs contain no secrets. SWA is Free, no repo link, has SPA fallback config; `VITE_API_BASE_URL` is a build-time public value only. Docker/CI: non-root, installs from `requirements.txt`, no Azure credentials, no deploy step, no secrets (only a throwaway CI SQL password, labelled as such). Local `.env` files are git-ignored and `.dockerignore`d.
+
+Security findings (accepted/open, none changed):
+1. SQL firewall rule `AllowAllWindowsAzureIps` (0.0.0.0) lets any Azure-hosted service, including other tenants', reach the server endpoint; protection rests on Entra-only auth. Frozen design has no VNet/private endpoint; consider restricting to App Service outbound IPs later.
+2. Storage `publicNetworkAccess: Enabled`, `defaultAction: Allow`: reachable from the internet but anonymous and key access are disabled, so only Entra identities with the role can read.
+3. `SCM_DO_BUILD_DURING_DEPLOYMENT=true` means Oryx builds on deploy; pinned requirements are used.
+
+OPEN RISKS (unverified, need an owner decision or a first real deploy):
+- **ODBC Driver 18 on App Service.** The Bicep uses the built-in Linux Python runtime (`PYTHON|3.12`) with a code deployment. As far as I know that image does not ship `msodbcsql18`, which `pyodbc` and the contract need ("App Service deployment must provide the compatible driver"). The tested Dockerfile installs it, but Bicep does not use the image. Options: (a) startup script that installs the driver, or (b) switch the site to a custom container using `backend/Dockerfile` (needs a registry: extra cost/resource, so it is an owner decision). Not changed here; not verifiable without Azure.
+- **Managed identity SQL access is not created by Bicep.** After deploy, an Entra admin must run `CREATE USER [<apiSiteName>] FROM EXTERNAL PROVIDER;` plus minimum roles, and run Alembic migrations as a one-off step (the app does not migrate at startup).
+- **Campus config** must exist at `/home/site/campus/campus.json` on the App Service share before start (operator uploads it; not in IaC).
+- Custom domains on the same registrable domain for SWA and the API are mandatory (ARCHITECTURE A-01) and are not in Bicep; `frontendOrigin`/`apiPublicOrigin` placeholders (`app.example.edu`, `api.example.edu`) must be replaced.
+- Quotas/SKU: `what-if` does not check capacity. Portal checks needed for B1 App Service quota and Azure SQL serverless availability in the chosen allowed region (eastasia is the default; koreacentral also passed `what-if`).
+
+Validation (executed, exit codes): `az bicep build` 0; `az bicep build-params` 0; `az bicep lint` 0. `az deployment group what-if -g rscgrp-01 ... main.bicepparam` (authenticated "Azure for Students" session, read-only): first run exit 1 (region policy, above); after the fix exit 0 listing Create for SQL server/db/firewall rule, storage account/blob service/container, plan, site, ftp policy, static site; the role assignment shows `Unsupported` (what-if cannot evaluate the principalId output before the site exists). `what-if` also ran with `location=koreacentral` (Create list returned; exit code masked by output truncation) and `eastasia` before the pin. what-if is NOT a full validation: capacity, quota, permissions and runtime behavior are untested.
+
+Deployment readiness checklist:
+1. Permissions: Owner (or Contributor + User Access Administrator) on the target RG, needed for the role assignment. Resource providers Microsoft.Web, Sql, Storage, Authorization registered.
+2. Parameters to set (no secrets): `frontendOrigin`, `apiPublicOrigin` (real https origins, same registrable domain), `sqlEntraAdminLogin`, `sqlEntraAdminObjectId` (real Entra user/group object ID), `sqlEntraAdminPrincipalType`; keep `location` in the allowed list.
+3. Nothing secret is required at deploy time (Entra-only SQL, managed identity Blob, no keys).
+4. Command (later, with owner approval): `az deployment group create --resource-group <rg> --template-file infra/main.bicep --parameters infra/main.bicepparam`. Run `what-if` first.
+5. Expected resources: SQL server + `findmything` DB + firewall rule; Storage account + `findmything-private` container; App Service plan (B1) + Linux site with system identity; role assignment; Static Web App (Free). Outputs: `apiSiteName`, `apiDefaultHostname`, `apiPrincipalId`, `sqlServerFqdn`, `sqlDatabaseName`, `storageAccountName`, `storageContainerName`, `staticWebAppName`, `staticWebAppDefaultHostname`.
+6. Post-deploy manual steps: ODBC driver decision, SQL identity user + migrations, upload `campus.json`, deploy API code and SWA `dist/`, custom domains, create the first moderator via CLI.
+
+No Azure resources were created or modified (`what-if` is read-only). No git commit or push.
+
+---
+
+## 1F. Session 2026-11-26 - Phase 4 Azure Infrastructure & CI Scaffolding (COMPLETE and VERIFIED locally; NOTHING deployed)
+
+Delivered (all uncommitted): `infra/main.bicep` (includes Static Web Apps `Microsoft.Web/staticSites`), `infra/main.bicepparam`, `infra/modules/{sql,storage,appservice,blob-role}.bicep` (Azure SQL, private Blob Storage, Linux App Service with SystemAssigned identity, Blob role assignment), `backend/Dockerfile` (repo-root build context, ODBC 18, non-root user, healthcheck, installs from `backend/requirements.txt`), `backend/requirements.txt`, `backend/requirements-dev.txt`, `frontend/Dockerfile`, `frontend/nginx.conf`, `.dockerignore`, `frontend/.dockerignore`, `.github/workflows/ci.yml` (backend, frontend, infra, docker jobs), `.gitignore` additions. Only code change this session: `frontend/Dockerfile` now runs `npm ci --include=dev`. `docker-compose.yml` was not created (not a required deliverable).
+
+Issues resolved: `nginx.conf` had NO BOM on entry (verified by byte check; all Dockerfiles, bicep, ci.yml, ignore files also BOM-free). The shell exports `NODE_ENV=production`; local frontend steps were run with `NODE_ENV=development` and `npm ci --include=dev`, and the Dockerfile is explicit about dev deps so it does not depend on the environment. A first backend `docker build` failed with a transient BuildKit error ("forwarding Ping: no such job"); an identical retry succeeded.
+
+Results (executed this session, exit codes captured):
+- `az bicep build --file infra/main.bicep`: 0. `az bicep build-params --file infra/main.bicepparam`: 0. `az bicep lint --file infra/main.bicep`: 0 (Bicep CLI 0.49.2).
+- Backend: `ruff check app tests` 0; `mypy app` 0 (41 files); `pytest -q` 0, **353 passed**, 1 warning, 232 s.
+- Frontend: `npm ci --include=dev` 0; `npm run lint` 0; `npm run typecheck` 0; `npm test` 0; `npm run build` 0 (with `VITE_API_BASE_URL=https://api.example.edu/api`).
+- `docker build -f backend/Dockerfile -t findmything-api:local .`: 0. `docker build --build-arg VITE_API_BASE_URL=... -t findmything-web:local frontend`: 0.
+- Smoke: web container `GET /` 200 and `GET /some/spa/route` 200 (SPA fallback); api container `GET /api/health` 200 `{"status":"ok"}`, Docker health `healthy`, runs as `appuser`. Containers removed afterwards.
+
+Not verified (by design): the Bicep templates were never deployed or `what-if`ed (needs an Azure subscription); the CI workflow was never run on GitHub; the API image was smoke-tested without a database (health only, `MATCHING_WORKER_ENABLED=false`).
+
+Phase 4 is COMPLETE. Phase 5 (Power BI) not started.
+
+---
 
 ### Phase 3 Frontend Completion Result (2026-11-25)
 All figures below were produced by direct execution in this session:

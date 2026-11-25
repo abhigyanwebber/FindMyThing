@@ -3,6 +3,31 @@ name = "findmything-backend"
 version = "1.0.0"
 description = "FindMyThing - secure campus lost & found API"
 requires-python = ">=3.12"
+# Runtime dependencies (contract section 23). Exact reproducible pins: requirements.txt / requirements-dev.txt.
+dependencies = [
+    "fastapi>=0.162,<1",
+    "uvicorn[standard]>=0.54,<1",
+    "pydantic>=2.14,<3",
+    "pydantic-settings>=2.16,<3",
+    "python-multipart>=0.0.33",
+    "sqlalchemy>=2.1,<2.2",
+    "alembic>=1.20,<2",
+    "pyodbc>=5.5,<6",
+    "argon2-cffi>=25.1",
+    "azure-identity>=1.27,<2",
+    "azure-storage-blob>=12.31,<13",
+    "pillow>=13.0",
+    "python-dotenv>=1.2,<2",
+    "tzdata>=2026.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.2,<10",
+    "httpx>=0.28,<1",
+    "ruff==0.17.4",
+    "mypy==2.4.1",
+]
 
 [tool.ruff]
 line-length = 140
