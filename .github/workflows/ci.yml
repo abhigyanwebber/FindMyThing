@@ -41,12 +41,17 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - name: Install ODBC Driver 18
         run: |
+          # unixODBC provides `odbcinst`; it is not guaranteed on the runner image, so install it before any check.
+          sudo apt-get update
+          sudo apt-get install -y unixodbc unixodbc-dev curl gnupg
           if ! odbcinst -q -d | grep -q "ODBC Driver 18"; then
-            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor --yes -o /usr/share/keyrings/microsoft-prod.gpg
             echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
             sudo apt-get update
-            sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+            sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
           fi
+      - name: Verify ODBC Driver 18
+        run: odbcinst -q -d | grep -q "ODBC Driver 18"
       - run: pip install -r requirements-dev.txt
       - run: ruff check app tests
       - run: mypy app
