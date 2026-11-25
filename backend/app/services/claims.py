@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import conflict, forbidden, not_found, unprocessable
+from app.core.errors import conflict, forbidden, not_found, require, unprocessable
 from app.core.security import new_id, utcnow
 from app.core.text import clean_optional_note, clean_text
 from app.persistence.models import Category, Claim, ClaimEvidence, ClaimStatusHistory, Location, Recovery, Report, User
@@ -37,8 +37,13 @@ def _report_ref(r: Report | None) -> dict | None:
 
 def active_evidence(db: Session, claim_id: uuid.UUID) -> list[ClaimEvidence]:
     return list(db.scalars(
-        select(ClaimEvidence).where(ClaimEvidence.claim_id == claim_id, ClaimEvidence.upload_status == "ACTIVE",
-                                    ClaimEvidence.deleted_at_utc.is_(None)).order_by(ClaimEvidence.uploaded_at_utc, ClaimEvidence.evidence_id)
+        select(ClaimEvidence)
+        .where(
+            ClaimEvidence.claim_id == claim_id,
+            ClaimEvidence.upload_status == "ACTIVE",
+            ClaimEvidence.deleted_at_utc.is_(None),
+        )
+        .order_by(ClaimEvidence.uploaded_at_utc, ClaimEvidence.evidence_id)
     ))
 
 
@@ -61,7 +66,7 @@ def claim_dto(db: Session, c: Claim) -> dict:
 
 def moderator_claim_dto(db: Session, c: Claim) -> dict:
     dto = claim_dto(db, c)
-    claimant = db.get(User, c.claimant_user_id)
+    claimant = require(db.get(User, c.claimant_user_id), "claimant")
     reviewer = db.get(User, c.reviewed_by_user_id) if c.reviewed_by_user_id else None
     dto["claimant"] = {"user_id": str(claimant.user_id), "display_name": claimant.display_name, "email": claimant.email_normalized}
     dto["reviewer"] = {"user_id": str(reviewer.user_id), "display_name": reviewer.display_name} if reviewer else None
@@ -74,15 +79,21 @@ def moderator_claim_dto(db: Session, c: Claim) -> dict:
     ).all()
     dto["history"] = [{"old_status": h.old_status, "new_status": h.new_status, "actor_display_name": name,
                        "reason_code": h.reason_code, "note": h.note, "changed_at_utc": iso(h.changed_at_utc)} for h, name in hist]
-    dto["related_reports"] = {"found": _related(db, c.found_report_id), "lost": _related(db, c.lost_report_id) if c.lost_report_id else None}
+    # Additive: lets the moderator UI void a recovery (contract 4.4 void route needs recovery_id).
+    rec = db.scalars(select(Recovery).where(Recovery.claim_id == c.claim_id).order_by(Recovery.completed_at_utc.desc())).first()
+    dto["recovery"] = recovery_dto(rec) if rec is not None else None
+    dto["related_reports"] = {
+        "found": _related(db, c.found_report_id),
+        "lost": _related(db, c.lost_report_id) if c.lost_report_id else None,
+    }
     return dto
 
 
 def _related(db: Session, report_id: uuid.UUID) -> dict:
-    r = db.get(Report, report_id)
-    cat = db.get(Category, r.category_id)
-    loc = db.get(Location, r.location_id)
-    owner = db.get(User, r.reporter_user_id)
+    r = require(db.get(Report, report_id), "report")
+    cat = require(db.get(Category, r.category_id), "category")
+    loc = require(db.get(Location, r.location_id), "location")
+    owner = require(db.get(User, r.reporter_user_id), "reporter")
     return {"report_id": str(r.report_id), "report_type": r.report_type, "title": r.title, "description": r.description,
             "category_name": cat.name, "location_name": loc.name, "occurred_on": r.occurred_on.isoformat(),
             "status": r.status, "version": r.version, "reporter": {"display_name": owner.display_name}}
@@ -139,10 +150,10 @@ def _lock_workflow(db: Session, claim_id: uuid.UUID, *, extra_report_ids=()) -> 
     c = _load_claim(db, claim_id)
     reports = lock_reports(db, [c.found_report_id, c.lost_report_id, *extra_report_ids])
     claims = lock_claims(db, [claim_id])
-    c = claims.get(claim_id)
-    if c is None:
+    locked = claims.get(claim_id)
+    if locked is None:
         raise not_found("Claim not found.")
-    return c, reports
+    return locked, reports
 
 
 def _no_conflict_of_interest(ctx: AuthContext, c: Claim, found: Report) -> None:
@@ -236,7 +247,7 @@ def moderator_list(db: Session, status: str | None, page: int, page_size: int) -
     rows = db.scalars(q.order_by(Claim.created_at_utc.desc(), Claim.claim_id.asc()).offset((page - 1) * page_size).limit(page_size)).all()
     items = []
     for c in rows:
-        claimant = db.get(User, c.claimant_user_id)
+        claimant = require(db.get(User, c.claimant_user_id), "claimant")
         found = db.get(Report, c.found_report_id)
         items.append({"claim_id": str(c.claim_id), "status": c.status, "version": c.version,
                       "created_at_utc": iso(c.created_at_utc), "status_changed_at_utc": iso(c.status_changed_at_utc),
@@ -399,7 +410,9 @@ def complete_recovery(db: Session, ctx: AuthContext, claim_id: uuid.UUID, decisi
     return {"claim": claim_dto(db, c), "recovery": recovery_dto(rec), "resolved_reports": [str(i) for i in resolved]}
 
 
-def void_recovery(db: Session, ctx: AuthContext, recovery_id: uuid.UUID, decision_note: str, expected_claim_version: int, corr: str) -> dict:
+def void_recovery(
+    db: Session, ctx: AuthContext, recovery_id: uuid.UUID, decision_note: str, expected_claim_version: int, corr: str
+) -> dict:
     note = clean_text(decision_note, field="decision_note", min_len=1, max_len=1000)
     rec0 = db.get(Recovery, recovery_id)
     if rec0 is None:

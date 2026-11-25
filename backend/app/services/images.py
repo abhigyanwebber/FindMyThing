@@ -42,11 +42,11 @@ def process_image(raw: bytes) -> ProcessedImage:
         probe = Image.open(io.BytesIO(raw))
         fmt = (probe.format or "").upper()
         if fmt not in ALLOWED:
-            raise _invalid("Only JPEG, PNG and WebP images are accepted.")
+            raise AppError(415, "UNSUPPORTED_MEDIA_TYPE", "Only JPEG, PNG and WebP images are accepted.")
         if getattr(probe, "is_animated", False) or getattr(probe, "n_frames", 1) > 1:
-            raise _invalid("Animated images are not accepted.")
+            raise AppError(415, "UNSUPPORTED_MEDIA_TYPE", "Animated images are not accepted.")
         probe.verify()  # structural check; image must be reopened afterwards
-        img = Image.open(io.BytesIO(raw))
+        img: Image.Image = Image.open(io.BytesIO(raw))
         img.load()
     except AppError:
         raise
@@ -55,6 +55,8 @@ def process_image(raw: bytes) -> ProcessedImage:
         raise _invalid("The file is not a valid image.") from None
 
     img = ImageOps.exif_transpose(img)  # apply orientation into the pixels before dropping metadata
+    # Pillow re-writes ICC profiles and JPEG comments from `info` on save; drop everything except palette transparency.
+    img.info = {k: v for k, v in img.info.items() if k == "transparency"}
     content_type, ext = ALLOWED[fmt]
     out = io.BytesIO()
     if fmt == "JPEG":

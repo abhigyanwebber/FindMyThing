@@ -100,7 +100,12 @@ class AzureBlobStore:
         from azure.storage.blob import ContentSettings
 
         try:
-            self._container.upload_blob(validate_key(key), data, overwrite=False, content_settings=ContentSettings(content_type=content_type))
+            self._container.upload_blob(
+                validate_key(key),
+                data,
+                overwrite=False,
+                content_settings=ContentSettings(content_type=content_type),
+            )
         except AzureError as exc:
             log.error("blob upload failed: %s", type(exc).__name__)
             raise BlobUnavailableError from exc

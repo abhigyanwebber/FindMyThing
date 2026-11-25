@@ -18,6 +18,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.errors import require
 from app.core.security import new_id, utcnow
 from app.domain import matching as m
 from app.persistence.database import get_sessionmaker
@@ -58,7 +59,7 @@ def lease_next_job(db: Session, now: dt.datetime | None = None) -> uuid.UUID | N
 
 def _view(db: Session, report_id_or_row) -> m.ReportView:
     r = report_id_or_row
-    loc = db.get(Location, r.location_id)
+    loc = require(db.get(Location, r.location_id), "location")
     return m.ReportView(
         report_id=r.report_id, category_id=r.category_id, location_id=r.location_id,
         zone_id=loc.zone_id or loc.location_id, occurred_on=r.occurred_on, title=r.title,

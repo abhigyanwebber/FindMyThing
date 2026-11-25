@@ -97,9 +97,10 @@ def create_app() -> FastAPI:
         log.exception("unhandled error request_id=%s", getattr(request.state, "request_id", ""))
         return _envelope(request, 500, "INTERNAL_ERROR", "An unexpected error occurred.")
 
-    from app.api import routes_auth, routes_claims, routes_matches, routes_reports
+    from app.api import routes_analytics, routes_auth, routes_claims, routes_matches, routes_reports
 
     app.include_router(routes_auth.router, prefix="/api")
+    app.include_router(routes_analytics.router, prefix="/api")
     app.include_router(routes_reports.router, prefix="/api")
     app.include_router(routes_matches.router, prefix="/api")
     app.include_router(routes_claims.router, prefix="/api")

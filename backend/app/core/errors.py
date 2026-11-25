@@ -42,3 +42,17 @@ def unprocessable(message: str, field_errors: dict[str, list[str]] | None = None
 
 def unavailable(message: str = "A required service is temporarily unavailable.") -> AppError:
     return AppError(503, "DEPENDENCY_UNAVAILABLE", message)
+
+
+class DataIntegrityError(RuntimeError):
+    """A row that foreign-key constraints guarantee to exist was not found.
+
+    Deliberately not an AppError: it surfaces as the generic 500 envelope, never as a client-visible 4xx.
+    """
+
+
+def require[T](obj: T | None, what: str) -> T:
+    """Narrow an Optional ORM lookup whose absence would mean a broken referential invariant."""
+    if obj is None:
+        raise DataIntegrityError(f"Referenced {what} is missing.")
+    return obj

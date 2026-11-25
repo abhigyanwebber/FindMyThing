@@ -24,7 +24,10 @@ os.environ["APP_ENV"] = "test"
 os.environ["MATCHING_WORKER_ENABLED"] = "false"  # tests drive the worker explicitly
 os.environ["FRONTEND_ORIGIN"] = "http://localhost:5173"
 os.environ["API_PUBLIC_ORIGIN"] = "http://localhost:8000"
-os.environ.pop("LOCAL_BLOB_DIR", None)
+# Empty string (not pop): pydantic-settings re-reads backend/.env, which sets a real dev LOCAL_BLOB_DIR. An explicit empty
+# environment value overrides the file, so no test can ever resolve a store that points at real local files.
+os.environ["LOCAL_BLOB_DIR"] = ""
+os.environ["AZURE_STORAGE_ACCOUNT_URL"] = ""
 if ADMIN_URL:
     os.environ["DATABASE_URL"] = ADMIN_URL.replace("Database=master", f"Database={TEST_DB}")
 

@@ -6,19 +6,37 @@ import datetime as dt
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile
 from pydantic import Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequestInfo, get_db, request_info, require_auth, require_moderator
 from app.core.errors import unprocessable
 from app.schemas.base import Strict
+from app.services import attachments
 from app.services import reports as svc
 from app.services.auth import AuthContext
+from app.services.images import MAX_BYTES
 
 router = APIRouter()
 
 ALLOWED_LIST_PARAMS = {"type", "status", "category_id", "location_id", "q", "page", "page_size"}
+
+
+def read_upload(file: UploadFile) -> attachments.RawUpload:
+    """Read at most MAX_BYTES+1 so oversized files are rejected (413) without buffering them unbounded."""
+    return attachments.RawUpload(data=file.file.read(MAX_BYTES + 1), filename=file.filename)
+
+
+def file_response(stored: attachments.StoredFile, stem: str) -> Response:
+    """Authorized stream: never cacheable, never sniffed, safe fixed inline filename (no client-supplied name)."""
+    return Response(
+        content=stored.data, media_type=stored.content_type,
+        headers={
+            "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="{stem}.{stored.extension}"',
+        },
+    )
 
 
 def reject_unknown_query(request: Request, allowed: set[str]) -> None:
@@ -109,6 +127,24 @@ def patch_report(report_id: uuid.UUID, body: PatchReportBody, ctx: AuthContext =
 def withdraw(report_id: uuid.UUID, body: VersionBody, ctx: AuthContext = Depends(require_auth),
              db: Session = Depends(get_db), info: RequestInfo = Depends(request_info)) -> dict:
     return svc.withdraw_report(db, ctx, report_id, expected_version=body.expected_version, correlation_id=info.request_id)
+
+
+@router.post("/reports/{report_id}/photo", status_code=201)
+def upload_photo(report_id: uuid.UUID, file: Annotated[UploadFile, File()], ctx: AuthContext = Depends(require_auth),
+                 db: Session = Depends(get_db), info: RequestInfo = Depends(request_info)) -> dict:
+    return attachments.upload_report_photo(db, ctx, report_id, read_upload(file), info.request_id)
+
+
+@router.get("/reports/{report_id}/photo")
+def get_photo(report_id: uuid.UUID, ctx: AuthContext = Depends(require_auth), db: Session = Depends(get_db)) -> Response:
+    return file_response(attachments.get_report_photo(db, ctx, report_id), "report-photo")
+
+
+@router.delete("/reports/{report_id}/photo", status_code=204)
+def delete_photo(report_id: uuid.UUID, ctx: AuthContext = Depends(require_auth), db: Session = Depends(get_db),
+                 info: RequestInfo = Depends(request_info)) -> Response:
+    attachments.delete_report_photo(db, ctx, report_id, info.request_id)
+    return Response(status_code=204)
 
 
 @router.post("/moderation/reports/{report_id}/close")

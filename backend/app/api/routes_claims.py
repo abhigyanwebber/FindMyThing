@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
 from pydantic import Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import RequestInfo, get_db, request_info, require_auth, require_moderator
-from app.api.routes_reports import paging, reject_unknown_query
+from app.api.routes_reports import file_response, paging, read_upload, reject_unknown_query
 from app.schemas.base import Strict
+from app.services import attachments
 from app.services import claims as svc
 from app.services.auth import AuthContext
 
@@ -42,6 +44,11 @@ class InfoBody(Strict):
     expected_version: int = Field(ge=1)
 
 
+class EvidenceDeleteBody(Strict):
+    reason_code: str
+    decision_note: str | None = None
+
+
 class VoidBody(Strict):
     decision_note: str
     expected_claim_version: int = Field(ge=1)
@@ -64,6 +71,36 @@ def my_claims(request: Request, ctx: AuthContext = Depends(require_auth), db: Se
 @router.get("/claims/{claim_id}")
 def get_claim(claim_id: uuid.UUID, ctx: AuthContext = Depends(require_auth), db: Session = Depends(get_db)) -> dict:
     return {"claim": svc.get_own_claim(db, ctx, claim_id)}
+
+
+@router.post("/claims/{claim_id}/evidence", status_code=201)
+def upload_evidence(claim_id: uuid.UUID, files: Annotated[list[UploadFile], File(alias="files[]")],
+                    ctx: AuthContext = Depends(require_auth), db: Session = Depends(get_db),
+                    info: RequestInfo = Depends(request_info)) -> dict:
+    uploads = [read_upload(f) for f in files]
+    return attachments.upload_claim_evidence(db, ctx, claim_id, uploads, info.request_id)
+
+
+@router.get("/claims/{claim_id}/evidence/{evidence_id}")
+def get_evidence(claim_id: uuid.UUID, evidence_id: uuid.UUID, ctx: AuthContext = Depends(require_auth),
+                 db: Session = Depends(get_db), info: RequestInfo = Depends(request_info)) -> Response:
+    return file_response(attachments.get_claim_evidence(db, ctx, claim_id, evidence_id, info.request_id), "claim-evidence")
+
+
+@router.delete("/claims/{claim_id}/evidence/{evidence_id}", status_code=204)
+def delete_evidence(claim_id: uuid.UUID, evidence_id: uuid.UUID, ctx: AuthContext = Depends(require_auth),
+                    db: Session = Depends(get_db), info: RequestInfo = Depends(request_info)) -> Response:
+    attachments.delete_own_evidence(db, ctx, claim_id, evidence_id, info.request_id)
+    return Response(status_code=204)
+
+
+@router.delete("/moderation/claims/{claim_id}/evidence/{evidence_id}", status_code=204)
+def mod_delete_evidence(claim_id: uuid.UUID, evidence_id: uuid.UUID, body: EvidenceDeleteBody,
+                        ctx: AuthContext = Depends(require_moderator), db: Session = Depends(get_db),
+                        info: RequestInfo = Depends(request_info)) -> Response:
+    attachments.moderator_delete_evidence(db, ctx, claim_id, evidence_id, reason_code=body.reason_code,
+                                          decision_note=body.decision_note, corr=info.request_id)
+    return Response(status_code=204)
 
 
 @router.post("/claims/{claim_id}/cancel")

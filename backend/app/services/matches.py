@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session, aliased
 
 from app.core import ratelimit
 from app.core.config import get_settings
-from app.core.errors import conflict, forbidden, not_found, unprocessable
+from app.core.errors import conflict, forbidden, not_found, require, unprocessable
 from app.core.security import utcnow
 from app.core.text import clean_optional_note
 from app.persistence.models import Category, Location, Match, MatchingJob, Report
+from app.persistence.results import affected_rows
 from app.services import audit
 from app.services.auth import AuthContext
 from app.services.locking import lock_reports
@@ -130,13 +131,13 @@ def dismiss(db: Session, ctx: AuthContext, match_id: uuid.UUID, reason_code: str
     res = db.execute(
         update(Match).where(Match.match_id == match_id, Match.match_status == "POTENTIAL").values(match_status="DISMISSED")
     )
-    if not res.rowcount:
+    if not affected_rows(res):
         raise conflict("MATCH_NOT_DISMISSABLE", "Only POTENTIAL matches can be dismissed.")
     audit.log_event(db, event_type="MATCH_DISMISSED", outcome="SUCCESS", correlation_id=correlation_id,
                     actor_user_id=ctx.user.user_id, target_type="MATCH", target_id=match_id,
                     metadata={"reason_code": reason_code, "decision_note": note})
     db.expire(m)
-    m = db.get(Match, match_id)
+    m = require(db.get(Match, match_id), "match")
     return {
         "match_id": str(m.match_id), "lost_report_id": str(m.lost_report_id), "found_report_id": str(m.found_report_id),
         "score": disp(m.score), "factors": _factors(m), "explanation": _explanation(m),

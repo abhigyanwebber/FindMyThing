@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.core.security import key_hash, new_id, utcnow
+from app.persistence.results import affected_rows
 
 
 def _window(now: dt.datetime, seconds: int) -> tuple[dt.datetime, int]:
@@ -65,4 +66,4 @@ def throttled(retry_after: int, message: str = "Too many attempts. Try again lat
 
 def purge_expired(db: Session) -> int:
     res = db.execute(text("DELETE FROM rate_limit_counters WHERE expires_at_utc < :n"), {"n": utcnow().replace(tzinfo=None)})
-    return res.rowcount or 0
+    return affected_rows(res) or 0

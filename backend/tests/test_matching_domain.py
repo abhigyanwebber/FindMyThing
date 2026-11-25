@@ -78,3 +78,40 @@ def test_rank_key_orders_score_then_gap_then_location_then_created_then_uuid():
     assert k_hi < k_lo
     same = m.rank_key(r_hi, Decimal(100), NOW, uuid.UUID(int=1))
     assert same < k_hi  # equal on everything but UUID -> UUID ascending breaks the tie
+
+
+def test_frozen_weights_are_exact():
+    assert m.WEIGHTS == {
+        "category": Decimal("0.40"),
+        "location": Decimal("0.25"),
+        "date": Decimal("0.25"),
+        "keywords": Decimal("0.10"),
+    }
+
+
+def test_each_factor_contributes_only_its_frozen_weight():
+    # Category only: 100 * 0.40 = 40.
+    r = m.score_pair(rv(location=L3, zone=Z2, title="aaaa bbbb", desc="cccc dddd", day=1),
+                     rv(location=L1, zone=Z1, title="zzzz qqqq", desc="wwww eeee", day=31))
+    assert r.category == 100 and r.location == 0 and r.date == 0 and r.keywords == 0
+    assert r.total == Decimal("40.00")
+    # Location only (exact match): 100 * 0.25 = 25.
+    r = m.score_pair(rv(category=C1, title="aaaa bbbb", desc="cccc dddd", day=1),
+                     rv(category=C2, title="zzzz qqqq", desc="wwww eeee", day=31))
+    assert r.location == 100 and r.date == 0 and r.keywords == 0 and r.total == Decimal("25.00")
+    # Date only (same day): 100 * 0.25 = 25.
+    r = m.score_pair(rv(category=C1, location=L3, zone=Z2, title="aaaa bbbb", desc="cccc dddd"),
+                     rv(category=C2, location=L1, zone=Z1, title="zzzz qqqq", desc="wwww eeee"))
+    assert r.date == 100 and r.location == 0 and r.keywords == 0 and r.total == Decimal("25.00")
+    # Keywords only (identical text): 100 * 0.10 = 10.
+    r = m.score_pair(rv(category=C1, location=L3, zone=Z2, day=1), rv(category=C2, location=L1, zone=Z1, day=31))
+    assert r.keywords == 100 and r.total == Decimal("10.00") and r.status == "SUPPRESSED"
+
+
+def test_total_is_weighted_sum_of_unrounded_factors():
+    # category 100, location 60 (same zone), date gap 15 -> 50, keywords 0:
+    # 100*.40 + 60*.25 + 50*.25 + 0*.10 = 40 + 15 + 12.5 = 67.50
+    r = m.score_pair(rv(location=L2, title="aaaa bbbb", desc="cccc dddd", day=1),
+                     rv(location=L1, title="zzzz qqqq", desc="wwww eeee", day=16))
+    assert (r.category, r.location, r.date, r.keywords) == (Decimal("100.00"), Decimal("60.00"), Decimal("50.00"), 0)
+    assert r.total == Decimal("67.50")

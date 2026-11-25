@@ -53,7 +53,10 @@ def health() -> dict:
 def _head_revision() -> str:
     cfg = AlembicConfig(str(REPO_ROOT / "backend" / "alembic.ini"))
     cfg.set_main_option("script_location", str(REPO_ROOT / "backend" / "migrations"))
-    return ScriptDirectory.from_config(cfg).get_current_head()
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+    if head is None:
+        raise RuntimeError("Alembic script directory has no head revision.")
+    return head
 
 
 @router.get("/health/ready")

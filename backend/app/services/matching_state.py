@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import new_id, utcnow
 from app.persistence.models import Match, MatchingJob, Report
+from app.persistence.results import affected_rows
 from app.services import audit
 
 OPEN_STATUSES = ("PENDING", "PROCESSING")
@@ -22,7 +23,7 @@ def invalidate_matches(db: Session, report_id: uuid.UUID, reason: str) -> int:
         .where((Match.lost_report_id == report_id) | (Match.found_report_id == report_id), Match.match_status != "INVALIDATED")
         .values(match_status="INVALIDATED", invalidated_at_utc=utcnow(), invalidation_reason=reason[:64])
     )
-    return res.rowcount or 0
+    return affected_rows(res) or 0
 
 
 def supersede_pending_jobs(db: Session, report_id: uuid.UUID, current_matching_version: int) -> None:
