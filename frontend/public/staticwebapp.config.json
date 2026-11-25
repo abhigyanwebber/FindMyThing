@@ -1,0 +1,16 @@
+{
+  "$comment": "Azure Static Web Apps. SPA fallback only; /api requests go straight to the API hostname (contract section 15), never through SWA.",
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/favicon.svg", "/*.{png,jpg,jpeg,gif,webp,svg,ico,css,js,map,json,txt}"]
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "Cache-Control": "no-store"
+  },
+  "routes": [
+    { "route": "/assets/*", "headers": { "Cache-Control": "public, max-age=31536000, immutable" } }
+  ]
+}
