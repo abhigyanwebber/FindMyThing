@@ -42,37 +42,43 @@ export default function ClaimDetailPage() {
               <Link to={`/reports/${claim.found_report_id}`}>{claim.found_report.title}</Link>
             </dd>
           </dl>
-          <h2>Your statement</h2>
-          <p className={styles["statement"]}>{claim.claim_statement}</p>
-          {claim.information_request.note ? (
-            <section aria-labelledby="info-heading">
-              <h2 id="info-heading">Moderator asked for more information</h2>
-              <p className={styles["statement"]}>{claim.information_request.note}</p>
-              <p>Add evidence below to help the moderator.</p>
-            </section>
-          ) : null}
-          {claim.decision.decision_note || claim.decision.reason_code ? (
-            <section aria-labelledby="decision-heading">
-              <h2 id="decision-heading">Moderator decision</h2>
-              {claim.decision.reason_code ? <p>Reason: {claim.decision.reason_code.replace(/_/g, " ").toLowerCase()}</p> : null}
-              {claim.decision.decision_note ? <p className={styles["statement"]}>{claim.decision.decision_note}</p> : null}
-            </section>
-          ) : null}
-          <EvidenceSection claim={claim} onChanged={result.reload} />
-          {claim.status === "PENDING" || claim.status === "VERIFIED" ? (
-            <section aria-labelledby="cancel-heading">
-              <h2 id="cancel-heading">Cancel this claim</h2>
-              <ActionForm
-                title="Cancel claim"
-                submitLabel="Cancel claim"
-                danger
-                onSubmit={async () => {
-                  await cancelClaim(claim.claim_id, claim.version);
-                  result.reload();
-                }}
-              />
-            </section>
-          ) : null}
+          <div className={styles["detailGrid"]}>
+            <div className={styles["detailMain"]}>
+              <h2>Your statement</h2>
+              <p className={styles["statement"]}>{claim.claim_statement}</p>
+              {claim.information_request.note ? (
+                <section aria-labelledby="info-heading">
+                  <h2 id="info-heading">Moderator asked for more information</h2>
+                  <p className={styles["statement"]}>{claim.information_request.note}</p>
+                  <p>Add evidence below to help the moderator.</p>
+                </section>
+              ) : null}
+              {claim.decision.decision_note || claim.decision.reason_code ? (
+                <section aria-labelledby="decision-heading">
+                  <h2 id="decision-heading">Moderator decision</h2>
+                  {claim.decision.reason_code ? <p>Reason: {claim.decision.reason_code.replace(/_/g, " ").toLowerCase()}</p> : null}
+                  {claim.decision.decision_note ? <p className={styles["statement"]}>{claim.decision.decision_note}</p> : null}
+                </section>
+              ) : null}
+            </div>
+            <div className={styles["detailSide"]}>
+              <EvidenceSection claim={claim} onChanged={result.reload} />
+              {claim.status === "PENDING" || claim.status === "VERIFIED" ? (
+                <section aria-labelledby="cancel-heading">
+                  <h2 id="cancel-heading">Cancel this claim</h2>
+                  <ActionForm
+                    title="Cancel claim"
+                    submitLabel="Cancel claim"
+                    danger
+                    onSubmit={async () => {
+                      await cancelClaim(claim.claim_id, claim.version);
+                      result.reload();
+                    }}
+                  />
+                </section>
+              ) : null}
+            </div>
+          </div>
         </article>
       ) : null}
     </LoadGate>

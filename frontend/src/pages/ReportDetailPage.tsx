@@ -46,6 +46,7 @@ export default function ReportDetailPage() {
   const report = result.data;
   usePageTitle(report ? report.title : "Report");
   const role = state.status === "authenticated" ? state.user.role : null;
+  const hasSide = Boolean(report?.is_owner) || Boolean(report?.can_claim && role === "STUDENT") || role === "MODERATOR";
 
   return (
     <LoadGate loading={result.loading} error={result.error} onRetry={result.reload}>
@@ -73,11 +74,19 @@ export default function ReportDetailPage() {
             <dt>Last updated</dt>
             <dd>{fmtDate(report.updated_at_utc)}</dd>
           </dl>
-          <p style={{ whiteSpace: "pre-wrap" }}>{report.description}</p>
-          <PhotoSection report={report} role={role} onChanged={result.reload} />
-          {report.is_owner ? <OwnerActions report={report} onChanged={result.reload} /> : null}
-          {report.can_claim && role === "STUDENT" ? <ClaimForm report={report} /> : null}
-          {role === "MODERATOR" ? <ModeratorReportActions report={report} onChanged={result.reload} /> : null}
+          <div className={hasSide ? styles["detailGrid"] : undefined}>
+            <div className={styles["detailMain"]}>
+              <p className={styles["prose"]}>{report.description}</p>
+              <PhotoSection report={report} role={role} onChanged={result.reload} />
+            </div>
+            {hasSide ? (
+              <div className={styles["detailSide"]}>
+                {report.is_owner ? <OwnerActions report={report} onChanged={result.reload} /> : null}
+                {report.can_claim && role === "STUDENT" ? <ClaimForm report={report} /> : null}
+                {role === "MODERATOR" ? <ModeratorReportActions report={report} onChanged={result.reload} /> : null}
+              </div>
+            ) : null}
+          </div>
           {(report.is_owner && report.status === "ACTIVE") || role === "MODERATOR" ? (
             <MatchesPanel reportId={report.report_id} moderator={role === "MODERATOR"} canRecalculate={report.status === "ACTIVE"} />
           ) : null}
@@ -193,7 +202,7 @@ function OwnerActions({ report, onChanged }: { report: Report; onChanged: () => 
           </button>
         </div>
       ) : (
-        <form className={formStyles["form"]} onSubmit={onSaveEdit} style={{ marginBottom: "var(--space-3)" }}>
+        <form className={formStyles["formSpaced"]} onSubmit={onSaveEdit}>
           <h3>Edit report details</h3>
           <label className={styles["stack"]}>
             Title
@@ -343,7 +352,7 @@ function ModeratorReportActions({ report, onChanged }: { report: Report; onChang
           </button>
         </div>
       ) : (
-        <form className={formStyles["form"]} onSubmit={onSaveCorrect} style={{ marginBottom: "var(--space-3)" }}>
+        <form className={formStyles["formSpaced"]} onSubmit={onSaveCorrect}>
           <h3>Correct report fields</h3>
           <label className={styles["stack"]}>
             Title

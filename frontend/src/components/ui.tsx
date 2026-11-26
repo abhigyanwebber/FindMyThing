@@ -44,8 +44,30 @@ export function LoadGate({
   return <>{children}</>;
 }
 
+const BADGE_TONES: Readonly<Record<string, string>> = {
+  // positive outcomes
+  RESOLVED: "toneSuccess",
+  RECOVERED: "toneSuccess",
+  VERIFIED: "toneSuccess",
+  SUCCESS: "toneSuccess",
+  // needs attention
+  PENDING: "toneWarning",
+  // negative outcomes
+  REJECTED: "toneError",
+  CLOSED: "toneError",
+  FAILURE: "toneError",
+  DENIED: "toneError",
+  // inactive / informational
+  WITHDRAWN: "toneNeutral",
+  CANCELLED: "toneNeutral",
+  SYSTEM: "toneNeutral",
+};
+
+/** Status chip. The text is the raw status (also what assistive tech reads); the tone only adds colour. */
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={styles["badge"]}>{status}</span>;
+  const tone = BADGE_TONES[status.toUpperCase()];
+  const className = [styles["badge"], tone ? styles[tone] : undefined].filter(Boolean).join(" ");
+  return <span className={className}>{status}</span>;
 }
 
 export function Pager({

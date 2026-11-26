@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import type { Role } from "../api/auth";
 import { useAuth } from "../context/auth-context";
+import styles from "../components/Page.module.css";
+import { Alert } from "../components/ui";
 
 /**
  * Presentation-only route guard. The backend re-checks authentication and role on every request; this only keeps
@@ -13,8 +15,8 @@ export default function RequireRole({ role }: { role?: Role }) {
   if (state.status === "error") {
     return (
       <div>
-        <p role="alert">{state.message}</p>
-        <button type="button" onClick={retry}>
+        <Alert>{state.message}</Alert>
+        <button type="button" className={styles["secondary"]} onClick={retry}>
           Try again
         </button>
       </div>

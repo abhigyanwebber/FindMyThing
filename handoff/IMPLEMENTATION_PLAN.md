@@ -94,6 +94,7 @@
 - [x] **Task 3.2: API Client, Auth Context & Security Integration** (DONE: `AuthProvider.tsx`, `auth-context.ts`, `client.ts`, `data.ts`, `RequireRole.tsx`)
 - [x] **Task 3.3: Student Views & Workflows** (DONE: Sign In, Register, Browse & Filter Reports, Report Creation + Photo Upload, Report Detail, Edit Report, Withdraw Report, Matches & Recalculate, Submit Claim with Optional Lost Report Link, My Reports, My Claims, Claim Detail + Evidence Upload/Deletion, Cancel Claim)
 - [x] **Task 3.4: Moderator Views & Workflows** (DONE: Claims Queue with Status Tabs, Claim Review Detail, Verification, Rejection with Mandatory Reason Codes, Info Request, In-Person Handover Recovery, Recovery Void, Evidence Removal, Report Moderation Close/Reopen/Correct, Analytics Dashboard, Activity Audit Feed)
+- [x] **Task 3.5: Frontend Visual Redesign (VoiceBox)** (DONE 2026-11-26: every page and shared component follows `docs/ui-reference/voicebox-DESIGN.md`; wide-screen detail/form layouts; no inline styles; lint/tsc/40 tests/build all exit 0. Details: STATUS.md 1I)
 
 ---
 

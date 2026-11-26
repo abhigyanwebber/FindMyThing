@@ -51,7 +51,7 @@ export default function ModeratorActivityPage() {
                   <td>
                     {item.target_type}
                     {item.target_id ? (
-                      <span className={styles["meta"]} style={{ display: "block" }}>
+                      <span className={styles["metaBlock"]}>
                         {item.target_id.slice(0, 8)}…
                       </span>
                     ) : null}
@@ -62,7 +62,7 @@ export default function ModeratorActivityPage() {
                   </td>
                   <td>
                     {item.metadata && Object.keys(item.metadata).length > 0 ? (
-                      <pre style={{ margin: 0, fontSize: "0.75rem", maxWidth: "20rem", overflowX: "auto" }}>
+                      <pre>
                         {JSON.stringify(item.metadata, null, 2)}
                       </pre>
                     ) : (

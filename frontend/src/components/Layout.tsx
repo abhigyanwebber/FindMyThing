@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import styles from "./Layout.module.css";
+import { Alert } from "./ui";
 
 /** Application shell: skip link, banner/nav/main/footer landmarks, and focus moved to <main> on route change. */
 export default function Layout() {
@@ -80,7 +81,7 @@ export default function Layout() {
         </nav>
       </header>
       <main id="main" ref={mainRef} tabIndex={-1} className={styles["main"]}>
-        {signOutError ? <p role="alert">{signOutError}</p> : null}
+        {signOutError ? <Alert>{signOutError}</Alert> : null}
         <Outlet />
       </main>
       <footer className={styles["footer"]}>Campus lost &amp; found and item recovery</footer>

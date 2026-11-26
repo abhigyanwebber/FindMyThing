@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { getReferenceData, listReports, type ReportStatus, type ReportType } from "../api/data";
-import { LoadGate, Pager, StatusBadge } from "../components/ui";
+import ReportCard from "../components/ReportCard";
+import { LoadGate, Pager } from "../components/ui";
 import styles from "../components/Page.module.css";
 import { useLoad } from "../useLoad";
 import { usePageTitle } from "../usePageTitle";
@@ -99,15 +100,7 @@ export default function ItemSearchPage() {
         {results.data && results.data.items.length === 0 ? <p>No reports match these filters.</p> : null}
         <ul className={styles["cards"]}>
           {results.data?.items.map((r) => (
-            <li key={r.report_id} className={styles["card"]}>
-              <h2>
-                <Link to={`/reports/${r.report_id}`}>{r.title}</Link>
-              </h2>
-              <p className={styles["meta"]}>
-                {r.report_type === "LOST" ? "Lost" : "Found"} · {r.category.name} · {r.location.name} · {r.occurred_on} ·{" "}
-                <StatusBadge status={r.status} />
-              </p>
-            </li>
+            <ReportCard key={r.report_id} report={r} />
           ))}
         </ul>
         {results.data ? <Pager page={page} pageSize={PAGE_SIZE} total={results.data.total} onPage={(p) => setParam("page", String(p))} /> : null}

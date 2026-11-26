@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { getApiBaseUrl } from "./config";
 import AuthProvider from "./context/AuthProvider";
+// Self-hosted fonts (bundled by Vite, no third-party font requests): Archivo Black headings, Work Sans UI/body.
+import "@fontsource/archivo-black/400.css";
+import "@fontsource-variable/work-sans/index.css";
 import "./index.css";
 import { routes } from "./routes";
 

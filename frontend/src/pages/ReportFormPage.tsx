@@ -86,76 +86,86 @@ export default function ReportFormPage() {
     <>
       <h1>Report an item</h1>
       <LoadGate loading={reference.loading} error={reference.error} onRetry={reference.reload}>
-        <form className={formStyles["form"]} onSubmit={onSubmit}>
-          {failure ? (
-            <p role="alert" className={formStyles["banner"]}>
-              {failure.message}
-            </p>
-          ) : null}
-          <fieldset className={styles["stack"]}>
-            <legend>I…</legend>
-            <label>
-              <span>
-                <input type="radio" name="type" checked={type === "LOST"} onChange={() => setType("LOST")} /> lost an item
-              </span>
-            </label>
-            <label>
-              <span>
-                <input type="radio" name="type" checked={type === "FOUND"} onChange={() => setType("FOUND")} /> found an item
-              </span>
-            </label>
-          </fieldset>
-          <div className={styles["stack"]}>
-            <label>
-              Category
-              <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-invalid={Boolean(failure?.fields["category_id"])}>
-                <option value="">Choose…</option>
-                {reference.data?.categories.map((c) => (
-                  <option key={c.category_id} value={c.category_id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {failure?.fields["category_id"] ? <span className={formStyles["error"]}>{failure.fields["category_id"].join(" ")}</span> : null}
-            <label>
-              Location
-              <select required value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-invalid={Boolean(failure?.fields["location_id"])}>
-                <option value="">Choose…</option>
-                {reference.data?.locations
-                  .filter((l) => !l.is_zone)
-                  .map((l) => (
-                    <option key={l.location_id} value={l.location_id}>
-                      {l.zone_name} – {l.name}
+        <div className={styles["formLayout"]}>
+          <form className={formStyles["form"]} onSubmit={onSubmit}>
+            {failure ? (
+              <p role="alert" className={formStyles["banner"]}>
+                {failure.message}
+              </p>
+            ) : null}
+            <fieldset className={styles["stack"]}>
+              <legend>I…</legend>
+              <label>
+                <span>
+                  <input type="radio" name="type" checked={type === "LOST"} onChange={() => setType("LOST")} /> lost an item
+                </span>
+              </label>
+              <label>
+                <span>
+                  <input type="radio" name="type" checked={type === "FOUND"} onChange={() => setType("FOUND")} /> found an item
+                </span>
+              </label>
+            </fieldset>
+            <div className={styles["stack"]}>
+              <label>
+                Category
+                <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-invalid={Boolean(failure?.fields["category_id"])}>
+                  <option value="">Choose…</option>
+                  {reference.data?.categories.map((c) => (
+                    <option key={c.category_id} value={c.category_id}>
+                      {c.name}
                     </option>
                   ))}
-              </select>
-            </label>
-            {failure?.fields["location_id"] ? <span className={formStyles["error"]}>{failure.fields["location_id"].join(" ")}</span> : null}
-          </div>
-          <Field id="title" label="Title" type="text" value={title} onChange={setTitle} autoComplete="off" maxLength={120} hint="5 to 120 characters." errors={failure?.fields["title"]} />
-          <div className={styles["stack"]}>
-            <label>
-              Description
-              <textarea required rows={5} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} aria-invalid={Boolean(failure?.fields["description"])} />
-            </label>
-            <span className={formStyles["hint"]}>10 to 2,000 characters. Do not include private contact details.</span>
-            {failure?.fields["description"] ? <span className={formStyles["error"]}>{failure.fields["description"].join(" ")}</span> : null}
-            <label>
-              Date {type === "LOST" ? "lost" : "found"}
-              <input type="date" required value={occurredOn} min={isoDate(-3650)} max={isoDate(1)} onChange={(e) => setOccurredOn(e.target.value)} />
-            </label>
-            {failure?.fields["occurred_on"] ? <span className={formStyles["error"]}>{failure.fields["occurred_on"].join(" ")}</span> : null}
-            <label>
-              Photo (optional, image up to 5 MB)
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onPhoto(e.target.files?.[0] ?? null)} />
-            </label>
-            {photoError ? <span className={formStyles["error"]}>{photoError}</span> : null}
-          </div>
-          <button type="submit" className={formStyles["primary"]} disabled={busy}>
-            {busy ? "Submitting…" : "Submit report"}
-          </button>
-        </form>
+                </select>
+              </label>
+              {failure?.fields["category_id"] ? <span className={formStyles["error"]}>{failure.fields["category_id"].join(" ")}</span> : null}
+              <label>
+                Location
+                <select required value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-invalid={Boolean(failure?.fields["location_id"])}>
+                  <option value="">Choose…</option>
+                  {reference.data?.locations
+                    .filter((l) => !l.is_zone)
+                    .map((l) => (
+                      <option key={l.location_id} value={l.location_id}>
+                        {l.zone_name} – {l.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {failure?.fields["location_id"] ? <span className={formStyles["error"]}>{failure.fields["location_id"].join(" ")}</span> : null}
+            </div>
+            <Field id="title" label="Title" type="text" value={title} onChange={setTitle} autoComplete="off" maxLength={120} hint="5 to 120 characters." errors={failure?.fields["title"]} />
+            <div className={styles["stack"]}>
+              <label>
+                Description
+                <textarea required rows={5} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} aria-invalid={Boolean(failure?.fields["description"])} />
+              </label>
+              <span className={formStyles["hint"]}>10 to 2,000 characters. Do not include private contact details.</span>
+              {failure?.fields["description"] ? <span className={formStyles["error"]}>{failure.fields["description"].join(" ")}</span> : null}
+              <label>
+                Date {type === "LOST" ? "lost" : "found"}
+                <input type="date" required value={occurredOn} min={isoDate(-3650)} max={isoDate(1)} onChange={(e) => setOccurredOn(e.target.value)} />
+              </label>
+              {failure?.fields["occurred_on"] ? <span className={formStyles["error"]}>{failure.fields["occurred_on"].join(" ")}</span> : null}
+              <label>
+                Photo (optional, image up to 5 MB)
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onPhoto(e.target.files?.[0] ?? null)} />
+              </label>
+              {photoError ? <span className={formStyles["error"]}>{photoError}</span> : null}
+            </div>
+            <button type="submit" className={formStyles["primary"]} disabled={busy}>
+              {busy ? "Submitting…" : "Submit report"}
+            </button>
+          </form>
+          <aside className={styles["aside"]} aria-label="Reporting tips">
+            <h2>Before you submit</h2>
+            <ul>
+              <li>Pick the most specific category and location. Matching compares category, location, date and keywords.</li>
+              <li>Describe what makes the item distinctive, such as brand, colour or markings. Leave out phone numbers and other private contact details.</li>
+              <li>A photo is optional (JPEG, PNG or WebP, up to 5 MB). You can add or remove it later on the report page.</li>
+            </ul>
+          </aside>
+        </div>
       </LoadGate>
     </>
   );

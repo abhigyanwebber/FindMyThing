@@ -60,6 +60,11 @@ Do NOT invent features or alter frozen architectural decisions. Read the documen
 
 ## 5. EXACT NEXT TASK FOR INCOMING AGENT
 
+### UPDATE 2026-11-26 (frontend redesign) - COMPLETE; the next task is unchanged
+The whole frontend was restyled to the owner-supplied VoiceBox design system. **Canonical reference: `docs/ui-reference/voicebox-DESIGN.md`** (already in the repo; do not recreate). Tokens and the documented AA contrast deviations are in `frontend/src/index.css`; shared component styles are in `frontend/src/components/Page.module.css` and `Form.module.css`. New pages and components must use those classes and tokens (no inline styles, 0 radius, 2px borders, one red accent per view). Verification (exit codes): `npm run lint` 0, `npx tsc -b` 0, `npm test -- --run` 0 (40 passed), `npm run build` 0. No browser was available, so a human visual check at mobile and desktop widths is still advisable. Full record: STATUS.md section 1I. Backend and Phase 4 files were not touched; nothing committed.
+
+**NEXT TASK is unchanged: Phase 5 - Power BI Analytics Integration & Handover** (see the Phase 4 update below and `handoff/IMPLEMENTATION_PLAN.md`). Do not start it without the owner's go-ahead.
+
 ### UPDATE 2026-11-26 (latest; READ THIS FIRST)
 ODBC risk RESOLVED (STATUS.md 1H): the API deploys to App Service as a custom container from a PUBLIC GHCR image built from `backend/Dockerfile` by `.github/workflows/publish-image.yml` (GITHUB_TOKEN only, no secrets, no Azure access). Bicep takes a `containerImage` parameter (placeholder in `main.bicepparam`). Locally verified: ODBC Driver 18 in image, non-root `appuser`, production-mode start with `/home/site/campus/campus.json`, `/api/health` 200 without a database. NOT verified against Azure/GitHub: the publish workflow run, anonymous GHCR pull, managed-identity SQL/Blob, `/home` mount permissions. Owner steps before deploy: push, run the publish workflow, make the GHCR package public, pin the `sha-` tag, real origins and Entra admin object ID, portal quota checks, then post-deploy SQL identity user + Alembic migration + `campus.json` upload + SWA deploy + custom domains. Do NOT deploy or commit without explicit owner approval. Phase 5 still not started. (The "ODBC startup script vs container" decision in the entry below is closed.)
 

@@ -1,39 +1,79 @@
-﻿/* Design tokens. Light and dark palettes keep WCAG 2.1 AA text contrast (contract section 14). */
+/*
+ * FindMyThing design system. Canonical visual reference: docs/ui-reference/voicebox-DESIGN.md (VoiceBox).
+ * Flat, sharp-cornered, black-and-white editorial UI with a single red accent. Borders (not shadows) do the structural work.
+ *
+ * Contrast deviations from the reference, required by WCAG 2.1 AA (contract section 14):
+ *  - the reference red #EF4444 is only 3.4:1 on #FAFAFA, so it is used for rules/borders/accents, while red TEXT uses --red-deep
+ *    and red button FILLS (hover/destructive) use --red-strong (>= 4.5:1 against #FAFAFA text);
+ *  - semantic status chips use darker text shades (--success-text, --warning-text) on the reference tinted backgrounds;
+ *  - --text-3 (#A3A3A3) is for placeholders/disabled only, never for essential text.
+ */
 :root {
-  color-scheme: light dark;
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-text: #111827;
-  --color-muted: #4b5563;
-  --color-border: #cbd5e1;
-  --color-hover: #e2e8f0;
-  --color-accent: #1d4ed8;
-  --color-accent-strong: #1e40af;
-  --color-on-accent: #ffffff;
-  --color-error: #b91c1c;
+  color-scheme: light;
+
+  /* Brand + surfaces */
+  --ink: #0a0a0a;
+  --paper: #fafafa;
+  --surface: #f5f5f5;
+  --raised: #e5e5e5;
+  --red: #ef4444;
+  --red-strong: #dc2626;
+  --red-deep: #b91c1c;
+
+  /* Content */
+  --text: #0a0a0a;
+  --text-2: #525252;
+  --text-3: #a3a3a3;
+
+  /* Borders */
+  --line-subtle: #e5e5e5;
+  --line-medium: #d4d4d4;
+  --line-strong: #0a0a0a;
+
+  /* Semantic */
+  --success: #16a34a;
+  --success-text: #15803d;
+  --success-bg: #f0fdf4;
+  --warning: #ca8a04;
+  --warning-text: #854d0e;
+  --warning-bg: #fefce8;
+  --error: #ef4444;
+  --error-text: #b91c1c;
+  --error-bg: #fef2f2;
+
+  /* Focus ring (reference: 0 0 0 2px #FAFAFA, 0 0 0 4px #0A0A0A) */
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink);
+
+  /* Spacing (8px base; reference scale 4, 8, 16, 24, 32, 48, 64, 96) */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
   --space-5: 2rem;
-  --radius: 0.375rem;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.5;
-}
+  --space-6: 3rem;
+  --space-7: 4rem;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0f172a;
-    --color-surface: #111c33;
-    --color-text: #f1f5f9;
-    --color-muted: #cbd5e1;
-    --color-border: #334155;
-    --color-hover: #1e293b;
-    --color-accent: #93b4ff;
-    --color-accent-strong: #93b4ff;
-    --color-on-accent: #0f172a;
-    --color-error: #fca5a5;
-  }
+  /* Typography */
+  --font-display: "Archivo Black", Impact, "Arial Black", sans-serif;
+  --font-body: "Work Sans Variable", "Work Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "Space Mono", "Courier New", Consolas, monospace;
+
+  /* Legacy aliases (kept so older rules and inline styles keep resolving) */
+  --color-bg: var(--paper);
+  --color-surface: var(--paper);
+  --color-text: var(--text);
+  --color-muted: var(--text-2);
+  --color-border: var(--line-medium);
+  --color-hover: var(--surface);
+  --color-accent: var(--ink);
+  --color-accent-strong: var(--ink);
+  --color-on-accent: var(--paper);
+  --color-error: var(--error-text);
+  --radius: 0;
+
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 *,
@@ -49,29 +89,106 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Headlines: Archivo Black, tight tracking (reference type scale; page titles use the 38px "Headline" step). */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--ink);
+  text-wrap: balance;
 }
 
 h1 {
   margin: 0 0 var(--space-3);
-  font-size: 1.75rem;
+  padding-bottom: var(--space-2);
+  border-bottom: 4px solid var(--ink);
+  font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.375rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 1.375rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 1rem;
   line-height: 1.25;
+  letter-spacing: -0.005em;
 }
 
 p {
   margin: 0 0 var(--space-3);
-  max-width: 65ch;
+  max-width: 68ch;
+}
+
+/* Lede directly under a page title. */
+h1 + p {
+  color: var(--text-2);
+  font-size: 1.0625rem;
+}
+
+strong {
+  font-weight: 700;
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
 }
 
-/* Visible keyboard focus everywhere (contract section 14). */
+a:hover {
+  color: var(--red-deep);
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+hr {
+  margin: var(--space-4) 0;
+  border: 0;
+  border-top: 2px solid var(--line-subtle);
+}
+
+/* Visible keyboard focus everywhere (contract section 14): stark black ring; transparent outline survives forced-colors. */
 :focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid transparent;
   outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -82,4 +199,126 @@ a {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------- Form controls (reference: Inputs, Checkboxes, Radio Buttons) ---------- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+select,
+textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) 0.875rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--line-medium);
+  border-radius: 0;
+  font: 400 0.875rem/1.5 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  background-position: calc(100% - 1.25rem) 50%, calc(100% - 0.875rem) 50%;
+  background-size: 0.4375rem 0.4375rem;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-3);
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--text-2);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--ink);
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0 0.5rem 0 0;
+  vertical-align: -0.2em;
+  accent-color: var(--ink);
+}
+
+input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  padding: var(--space-1);
+  background: var(--paper);
+  border: 2px dashed var(--line-medium);
+  font: 400 0.875rem/1.5 var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: var(--space-3);
+  padding: 0.375rem var(--space-3);
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  font: 700 0.75rem var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
 }

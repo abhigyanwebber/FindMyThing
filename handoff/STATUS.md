@@ -3,7 +3,7 @@
 **Snapshot Timestamp:** 2026-11-25  
 **Repository Path:** `C:\Users\ASUS\Desktop\FindMyThing`  
 **Git Branch:** `main` (commit `d62c658 "implementation milestone"`)  
-**Current Phase:** Phase 1 (Backend static quality & tests) COMPLETE. Phase 2 (Backend contract surface & CLI) COMPLETE. Phase 3 (Frontend React + TypeScript + Vite SPA, Student & Moderator Workflows) COMPLETE and VERIFIED. Phase 4 (Azure Infrastructure & CI) COMPLETE and verified locally 2026-11-26 (see 1F; not deployed).
+**Current Phase:** Phase 1 (Backend static quality & tests) COMPLETE. Phase 2 (Backend contract surface & CLI) COMPLETE. Phase 3 (Frontend React + TypeScript + Vite SPA, Student & Moderator Workflows) COMPLETE and VERIFIED. Phase 4 (Azure Infrastructure & CI) COMPLETE and verified locally 2026-11-26 (see 1F; not deployed). Frontend VoiceBox visual redesign COMPLETE and verified 2026-11-26 (see 1I).
 
 ---
 
@@ -16,7 +16,34 @@ FindMyThing is a campus-focused, security-first Lost & Found and Item Recovery p
 - SQL Server 2022 backend with FastAPI, SQLAlchemy 2, and Alembic migrations.
 - Modern React + TypeScript + Vite accessible frontend SPA with CSS Modules, strict role routing, and full API integration.
 
-## 1H. Session 2026-11-26 (latest) - ODBC deployment decision RESOLVED: App Service custom container from a public GHCR image (NOTHING deployed)
+## 1I. Session 2026-11-26 (latest) - Frontend visual redesign (VoiceBox) COMPLETE and VERIFIED (frontend only; backend and Phase 4 files untouched)
+
+**Canonical UI reference (preserved in the repo, do not recreate):** `docs/ui-reference/voicebox-DESIGN.md` (the owner-supplied "VoiceBox" design system: flat, 0-radius, 2px borders, Archivo Black headlines, Work Sans body, black/white with one red accent, black focus ring). Design tokens live in `frontend/src/index.css`; its header comment lists the deliberate WCAG 2.1 AA deviations from the reference (red TEXT uses `#B91C1C`, red button FILLS use `#DC2626`, status-chip text uses darker green/amber, `#A3A3A3` only for placeholders/disabled).
+
+**Landed in earlier sessions (continued, not redone):** shared layer (`index.css`, `Layout.tsx`/`Layout.module.css`, `Form.module.css`, `Page.module.css`, `ui.tsx`, new `ReportCard.tsx`), Home, Browse, My Reports, Register, Sign in, moderator Analytics. Fonts are self-hosted via `@fontsource/archivo-black` and `@fontsource-variable/work-sans` (`package.json`/lockfile changed). Space Mono is not bundled; `--font-mono` falls back to Courier New/Consolas.
+
+**Completed this session:**
+- New shared layout classes in `Page.module.css`: `detailGrid`/`detailMain`/`detailSide` (main column + action column, collapses below 56rem), `formLayout`, and helpers `flushTop`, `rubricSpaced`, `metaBlock`, `prose`, `formFoot`; `Form.module.css` gained `formSpaced`.
+- Wide-screen layouts: Report detail (description + photo | owner/claim/moderator actions, matches full width below), student Claim detail (statement/decision | evidence/cancel), Moderator claim review (statement..evidence | moderation actions, audit timeline full width below), Report form (form beside a "Before you submit" tips aside). The action column is only rendered when the viewer has actions.
+- All inline `style={{}}` removed from pages/components (0 remain); `RequireRole` error state now uses `Alert` + the shared secondary button; 404 page gained the rubric label.
+- No behaviour, route, API call, auth/CSRF logic or test was changed.
+
+**Verification (run in `frontend/`, real exit codes; identical results before and after this session's edits):**
+
+| Check | Result |
+|---|---|
+| `npm run lint` | exit 0 |
+| `npx tsc -b` | exit 0 |
+| `npm test -- --run` | exit 0, 3 files, 40 tests passed |
+| `npm run build` | exit 0 (58 modules; CSS 21.82 kB; JS 380.79 kB, 115.15 kB gzip) |
+
+**Limits of verification:** no browser or screenshot tooling was available, so the visual result was verified through typecheck, lint, unit/routing tests and the production build only (CSS-module `composes` helpers confirmed present in the built bundle). A human visual pass (`npm run dev`) at mobile and desktop widths is still recommended. Nothing committed or pushed.
+
+**Files changed this session:** `components/Page.module.css`, `components/Form.module.css`, `components/RequireRole.tsx`, `pages/HomePage.tsx`, `pages/RegisterPage.tsx`, `pages/SignInPage.tsx`, `pages/NotFoundPage.tsx`, `pages/ReportDetailPage.tsx`, `pages/ReportFormPage.tsx`, `pages/ClaimDetailPage.tsx`, `pages/moderator/ModeratorClaimDetailPage.tsx`, `pages/moderator/ModeratorActivityPage.tsx`, `pages/moderator/ModeratorAnalyticsPage.tsx` (all under `frontend/src/`), plus these three handoff files.
+
+---
+
+## 1H. Session 2026-11-26 (earlier) - ODBC deployment decision RESOLVED: App Service custom container from a public GHCR image (NOTHING deployed)
 
 **Decision:** run the API on Linux App Service as a **custom container** built from the existing `backend/Dockerfile` and pulled from a **public GitHub Container Registry image**. Rejected: built-in Python runtime plus a startup script that apt-installs `msodbcsql18` (re-runs on every restart, adds minutes to cold start, depends on Microsoft's apt repo being reachable at boot, and is not testable locally). The image already installs the driver, builds, runs non-root and was smoke-tested, so it is the reproducible path. GHCR avoids an Azure Container Registry (extra cost); Microsoft docs state that for a public registry no credentials are needed and only the image name is set, so no `DOCKER_REGISTRY_SERVER_*` settings and no secrets exist. Docs also say custom containers only mount `/home` when `WEBSITES_ENABLE_APP_SERVICE_STORAGE=true`, and need `WEBSITES_PORT` for a non-80 port.
 

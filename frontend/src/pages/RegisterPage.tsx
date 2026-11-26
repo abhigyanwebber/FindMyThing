@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import Field from "../components/Field";
 import styles from "../components/Form.module.css";
+import pageStyles from "../components/Page.module.css";
 import { toFormFailure, type FormFailure } from "../components/formErrors";
 import { useAuth } from "../context/auth-context";
 import { usePageTitle } from "../usePageTitle";
@@ -36,6 +37,8 @@ export default function RegisterPage() {
   return (
     <>
       <h1>Create account</h1>
+      <div className={pageStyles["authLayout"]}>
+        <div className={`${pageStyles["panel"]} ${pageStyles["panelAccent"]}`}>
       <form className={styles["form"]} onSubmit={onSubmit}>
         {failure ? (
           <p role="alert" className={styles["banner"]}>
@@ -49,9 +52,19 @@ export default function RegisterPage() {
           {busy ? "Creating account…" : "Create account"}
         </button>
       </form>
-      <p>
+      <p className={pageStyles["formFoot"]}>
         Already registered? <Link to="/sign-in">Sign in</Link>
       </p>
+        </div>
+        <aside className={pageStyles["aside"]} aria-label="About accounts">
+          <h2>Your account</h2>
+          <ul>
+            <li>Use your campus email. Your display name appears on the reports you file.</li>
+            <li>Choose a unique password of 12 to 128 characters.</li>
+            <li>Reports and claims you submit stay linked to this account.</li>
+          </ul>
+        </aside>
+      </div>
     </>
   );
 }
